@@ -1,8 +1,6 @@
 Spotify Genre Prediction
 ===
 
-First draft deadline: **20/05**
-
 # Index
 1. Project definition
 2. Related projects
