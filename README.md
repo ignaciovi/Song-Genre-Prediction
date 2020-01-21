@@ -16,18 +16,21 @@ Spotify Genre Prediction
 
 # Project definition
 
-In this project we will work on predicting the genre of a song based on its audio analysis features.
+Spotify provides an API which returns JSON metadata about music artists, albums, and tracks, directly from their DataBase
+One of their endpoints enable the user to get Audio Features for a Track. This is, to obtain the high level characteristics that define a song.
+
+In this project we will work on predicting the genre of a song based on those audio analysis features. The main purpose ot this work is to analyse if the features extracted by Spotify (by unknown audio analysis criteria) allow us to group music genres only taking that information into consideration.
 
 First, we will have to find the list of tracks that we will use as training/testing data.
 Then, we will get the audio features of each track and create a new dataset.
 Lastly, we will perform the analysis and prediction of the genres and evaluate accuracy by applying different models and techniques.
 
-Disclaimer: This is an learning/iterative project, I will add/modify solutions according to what I learn over time.
+Since this is a project that I created to learn more about Data Science, I will add/modify solutions according to what I learn over time.
 
-We will first start by pointing out some (logic) assumptions without knowing anything about the data or the problem:
-- Some audio features will have more influence than others in the accuracy of the genre prediction
-- There are a wide number of genres that a song can be tagged with. Track genres will have to be generalised with a few of them to make the problem simpler
-- Some genres will have similar audio features between them
+Firstly, we will start by pointing out some assumptions without knowing anything about the data or the problem:
+- Spotify generates a set of audio features based on audio analysis that they perform. Some audio features will have more influence than others in the accuracy of the genre prediction, and we will need to perform data selection and understand what impact has each data feature
+- There are a wide number of genres that a song can be categorised as. We will generalise music genres into a few of them in order to simplify the problem
+- Some genres will have similar audio features
 
 # Research related projects
 
@@ -41,24 +44,22 @@ Using lyrics to predict the genre of a track:
 https://towardsdatascience.com/how-we-used-nltk-and-nlp-to-predict-a-songs-genre-from-its-lyrics-54e338ded537
 http://cs229.stanford.edu/proj2017/final-reports/5242682.pdf
 
-We haven't found similar project to the one that will be developer (Genre Classification of Spotify Songs using Lyrics,
+We haven't found similar project to the one that will be developed (Genre Classification of Spotify Songs using Lyrics,
 Audio Previews, and Album Artwork is the closest to this).
 
 # Data acquisition
 
 The objective of this project is to predict the genre of a track based on its features.
-Features will be obtained from the Spotify Restful API
+Features will be obtained from the Spotify Restful API.
 
-What is an API?
-A RESTful API is an application program interface (API) that uses HTTP requests to GET, PUT, POST and DELETE data [1](https://searchmicroservices.techtarget.com/definition/RESTful-API ).
+A RESTful API is an application program interface (API) that uses HTTP requests to GET, PUT, POST and DELETE data [[1]](https://searchmicroservices.techtarget.com/definition/RESTful-API ).
 
-We will use the following URL to get the features: 
+We will use the following endpoint to get the features: 
 https://developer.spotify.com/documentation/web-api/reference/tracks/get-audio-features/
 
-The study of the features present in this REST call is done in the section "Study of features"
+The study of the Spotify features is done in the section "Study of features".
 
-We know how to obtain the features, but we need the track and the artist names.
-We will first check with the Spotify Restful API if it is possible to get the genre of a track.
+Next step will be to get the tracks dataset. For this, we will define a number of music genres and we will get a set of X tracks for each music genre. 
 
 First issue that we encounter here is that we can't get the genre of a track with the Spotify API, but we can get the genre of an artist. However, not all the songs of an artist that plays "pop" are "pop". We could generalise but, would it be okay to do that?
 
@@ -77,7 +78,7 @@ Spotify tags artists with several "subgenres" which makes it difficult to reduce
 
 Therefore we have two options to get our data:
 1. Find a dataset with the tags defined
-2. Take a list of songs. Select a limited number of genres. For each song, find genre in spotify. If it matches one of the genres selected, save. Go through all dataset.
+2. Define a number of genres that we want to study. Take a list of songs. For each song, find genre in spotify. If it matches one of the genres selected, store that song in the dataset
 
 In this project we will select the first option, leaving the second one for future work.
 We will use the following dataset: https://www.kaggle.com/gyani95/380000-lyrics-from-metrolyrics
@@ -86,18 +87,18 @@ In this dataset we have the following information:
 
 ![](https://i.imgur.com/DVVZVmu.png)
 
-We have:
+For our project, it will be useful to consider:
 - Genre
 - Track
 - Artist
 
-We will use artist/track information to get the features of the track using the Spotify API and we will combine both into a final dataset that will be used for the predictions
+For each track we will get the features using the Spotify API and we will combine both into a final dataset that will be used for the predictions.
 
-First we will study the initial dataset
+First we will study the initial dataset.
 
 # Study of the dataset
 
-Doing a first count of the genres of the dataset, we find the following
+Doing a first count of the dataset genres, we find the following:
 
     [('Rock', 131377),
      ('Pop', 49444),
@@ -112,12 +113,14 @@ Doing a first count of the genres of the dataset, we find the following
      ('Indie', 5732),
      ('Folk', 3241)]
 
-We discard "Not Available" and "Other" as they are not meaningful for the prediction
-We will also drop "Indie" and "Folk" to simplify the problem
+We discard "Not Available" and "Other" as they are not meaningful for the prediction.
+We will also drop "Indie" and "Folk" to simplify the problem.
 
 Therefore, we end up with 8 genres: 
 
     list_genres = ["Rock", "Pop", "Hip-Hop", "Metal", "Country", "Jazz", "Electronic", "R&B"]
+
+This provides enough categorical variety.
 
 First, we will perform data cleaning: drop rows with any NaN value:
 
@@ -134,11 +137,16 @@ First, we will perform data cleaning: drop rows with any NaN value:
      ('Indie', 3149),
      ('Folk', 2243)]
 
-We will take a subset of 1000 random songs for each genre.
+Rock is the most common data category. In order to avoid data imbalance, we will take a subset of 1000 random songs for each genre.
+By randomising we avoid having the same artist repeated a lot, assuming that more data variety may improve the prediction
+We could take 1000 songs (since the less frequent is Folk that has 2243) but we are curious to check what will be the accuracy in prediction with a lower volume of data.
+//TODO taking 2000 songs
+//TODO comment client id and secret key
+//TODO Add electronic music to dataset
 
 # Study of the features
 
-We are going to use the following features that Spotify gives as audio analysis characteristics:
+We are going to use the following features that Spotify gives provides from their audio analysis:
 
 `duration_ms`	The duration of the track in milliseconds.
 
@@ -168,10 +176,9 @@ We are going to use the following features that Spotify gives as audio analysis 
 
 Since our dataset doesnt have any Live song, we assume that:
 
-- liveness won't have importance in our prediction
+- liveness won't bei mportant in the prediction
 
 The rest of the features are probably important for the prediction, but we will check that later in the Analysis section.
-
 
 # Creating new dataset
 
@@ -181,15 +188,12 @@ The procedure to get the features of the tracks will be:
 
 As we start fetching the data, we find out that for some songs:
 1. No analysis of features has been done by spotify
-2. They simply dont exist in spotify or dont have that same name
+2. They simply dont exist in spotify or dont have the same name
 
-So, once we create a dataframe unifying artist + track + features + genre, we will check how many tracks do we have left from the initial dataset. Even the fact that there is some imbalance in the dataset, this is not significant and we progress with it.
+Those cases will be ignored
 
-# Collection of assumptions
-
-- remove attributes: liveness assumption wont have importance in our prediction
-- data aggregation: dividing categorical data in one hot encoding will improve performance
-- data trasnformation: try normalizing and see if it improves but I assume it wont
+Once we create a dataset unifying artist + track + features + genre, we will check how many tracks do we have left from the initial dataset.
+//TODO
 
 # Analysis
 
